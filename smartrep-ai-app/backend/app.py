@@ -3,6 +3,10 @@ import google.generativeai as genai
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
+from supabase import create_client, Client
+from functools import wraps 
+
+
 
 # Load envrionment variables from .env file
 load_dotenv()
@@ -11,6 +15,11 @@ load_dotenv()
 app = Flask(__name__)
 # Allow requests from the frontend
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Initialize Supabase client for backend
+supa_url: str = "https://sckbcgxrebtmxozplmke.supabase.co"
+supa_key: str = os.getenv("SUPABASE_SERVICE_KEY")
+supabase_client: Client = create_client(supa_url, supa_key)
 
 # Configure the Gemini API client
 api_key = os.getenv("GEMINI_API_KEY")
@@ -31,11 +40,32 @@ else:
       print(f"Error: {e}")
       model = None
 
+# Decorator to protect routes
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token =  None
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[1]
+            if not token:
+                return jsonify({'message': 'Token missing!'}), 401
+            try:
+                # Validate token with Supabase 
+                user = supabase_client.auth.get_user(token).user
+                if not user:
+                    raise Exception("Invalid user")
+            except Exception as e:
+                return jsonify({'message': 'Token is invaliud or expired!'}), 401
+            return f(*args, **kwargs)
+        return decorated
+
+
 @app.route("/")
 def index():
     return "SmartRepAI Backend is running!"
     
 @app.route("/api/chat", methods=["POST"])
+@token_required
 def chat_handler():
     if model is None:
         return jsonify({"error": "Gemini model is not configured. Check backend logs."}), 500
@@ -49,7 +79,7 @@ def chat_handler():
     history = data["history"]
 
     try:
-        # Use the simpler, stateless generate_content method which is more robust 
+        # Using the simpler, stateless generate_content method which is more robust 
         response = model.generate_content(history)
         return jsonify({"text": response.text})
 

@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         /* Base styles */
@@ -151,19 +152,29 @@
 <body data-theme="dark">
 
     <!-- Home Screen Page -->
-    <div id="home-page" class="page active min-h-screen flex-col p-6 md:p-8 max-w-md mx-auto relative">
-        <header class="mb-8 w-full">
-            <div class="flex justify-between items-center">
-                <a href="#" class="py-2 px-4 rounded-lg text-sm font-semibold hover:opacity-80 transition-opacity" style="color: var(--text-primary); background-color: var(--subtle-button-bg);">Log In</a>
-                <a href="#" data-target="settings-page" class="nav-link hover:opacity-80 transition-opacity">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" style="color: var(--text-primary);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </a>
-            </div>
-            <h1 class="text-3xl font-bold text-center mt-4">SmartRepAI</h1>
-        </header>
+ <header class="mb-8 w-full">
+    <div id="user-status-container" class="flex justify-between items-center">
+        <form id="login-form" class="w-full flex items-center gap-2">
+            <input type="email" id="email-input" placeholder="Email" class="text-input text-sm py-1 flex-grow" required>
+            <input type="password" id="password-input" placeholder="Password" class="text-input text-sm py-1 flex-grow" required>
+            <button type="submit" class="py-1 px-3 rounded-lg text-sm font-semibold hover:opacity-80 transition-opacity" style="color: var(--text-primary); background-color: var(--subtle-button-bg);">Login / Sign Up</button>
+        </form>
+        <div id="user-info" class="hidden w-full flex justify-between items-center">
+            <p id="user-email-display" class="text-sm font-medium"></p>
+            <button id="logout-button" class="py-1 px-3 rounded-lg text-sm font-semibold hover:opacity-80 transition-opacity" style="color: var(--text-primary); background-color: var(--subtle-button-bg);">Logout</button>
+        </div>
+    </div>
+    <div class="flex justify-end mt-2">
+        <a href="#" data-target="settings-page" class="nav-link hover:opacity-80 transition-opacity">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" style="color: var(--text-primary);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </a>
+    </div>
+    <h1 class="text-3xl font-bold text-center mt-4">SmartRepAI</h1>
+</header>
+
         <main class="flex-grow w-full pb-24">
             <div class="space-y-4">
                 <a href="#" data-target="role-play-page" class="nav-link flex items-center p-4 rounded-xl shadow-md transition-all duration-300 transform hover:scale-105 home-nav-button">
@@ -478,11 +489,62 @@
         </div>
 
     <script>
+        // --- Supabase Client Initialization ---
+        const supaURL = 'https://sckbcgxrebtmxozplmke.supabase.co';// Project URL
+        const supaAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNja2JjZ3hyZWJ0bXhvenBsbWtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMDIwNjcsImV4cCI6MjA2Njc3ODA2N30.rCsHHG832qIKbrxxEvkIGVxCLpXJsd-NbCKvXgR_sxs';
+        const supabase = supabase.createClient(supaURL, supaAnonKey);
+
         document.addEventListener('DOMContentLoaded', () => {
             const pages = document.querySelectorAll('.page');
             const navLinks = document.querySelectorAll('.nav-link');
             const successToast = document.getElementById('success-toast');
+
+            // Supabase Auth Logic --- (Sign up, Log in, Log out, updates)
+            const loginFOrm = document.getElementById('login-form');
+            const logoutButton = document.getElementById('logout-button');
+            const userInfo = document.getElementByUd('user-info');
+            const userEmailDisplay = document.getElementById('user-email-display')});
             
+            // Handle Login/Sign Up Form
+            loginForm.addEventListner('usbmit', async (event) => {
+                event.preventDefault();
+                const email = document.getElementById('email-input'.value);
+                const password = document.getElementById('password-input').value;
+
+                // Try to sign in first
+                const { error: signInEffort} = await supabase.auth.signInWithPassword({ email, password});
+
+                if (signInError) {
+                    // If sign in fails, it might be because the user doesn't exist yet, so we try to sign them up)
+                    const { error: signUpError } = await supabase.auth.signUp({ email, password });
+                    if (signUpError) {
+                        alert(signUpError.message);
+                    } else {
+                        alert('Signed up successfully!');
+                    }
+                }
+            }),
+
+            // Handle Logout
+            logoutButton.addEventListner('click', async () => {
+                await supabase.auth.signOut();
+            });
+
+            // Listen for changes in authentication state (login/logout)
+            supabase.auth.onAuthStateChange((_event, session) => {
+                if (session && session.user) {
+                    // User logged in
+                    userInfo.classList.remove('hidden');
+                    loginForm.classList.add('hidden');
+                    userEmailDisplay.textContent = session.user.email;
+                } else {
+                    // User is logged out
+                    userInfo.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                    userEmailDisplay.textContent = '';
+                }
+             });
+
             // --- Page Navigation ---
             const showPage = (pageId) => {
                 pages.forEach(page => {
@@ -530,18 +592,21 @@
                     chatHistoryRef.push({ role: "user", parts: [{ text: prompt }] });
                     
                     try {
-                        // New backend server running locally
-                        const apiURL = "smartrep-ai-app.vercel.app";
+                        const { data: { session } } = await supabase.auth.getSession();
 
-                        // Only sending the history now..
-                        const payload = {
-                            history: chatHistoryRef.slice(0, -1) // Send all but the user's latest message as history 
-                        };
+                        if (!session) {
+                            alert("You must be logged in to chat.");
+                            return;
+                        }
 
-                        const response = await fetch(apiURL, {
+                        const apiUrl = "http://127.0.0.1:5000/api/chat";
+                        const payload = { history: chatHistoryRef };
+
+                        const response = await fetch(apiUrl, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${session.access_token}` // Add the users token
                             },
                             body: JSON.stringify(payload)
                         });
@@ -552,26 +617,22 @@
                         }
 
                         const result = await response.json();
-
                         if (result.text) {
                             const aiResponse = result.text;
                             chatHistoryRef.push({ role: "model", parts: [{ text: aiResponse }] });
                             appendMessage(aiResponse, 'ai', historyContainer);
-                            } else {
-                                appendMessage("I couldn't generate a response. Please try again.", 'ai', historyContainer);
-                            }
-                        }       
-                         
-                    catch (error) {
-                        console.error("Error calling Gemini API:", error);
-                        appendMessage(`Error: ${error.message}.`, 'ai', historyContainer);
+                        } else {
+                            appendMessage("I couldn't generate a response. Please try again.", 'ai', historyContainer);
+                        }
+                    } catch (error) { 
+                        console.error("Error sending message.", error);
+                        appendMessage(`Error: ${error.message}. Please try again.`, 'ai', historyContainer);
                     } finally {
                         sendButton.innerHTML = sendButtonIcon;
                         sendButton.disabled = false;
                         input.disabled = false;
                         input.focus();
                     }
-                };
 
                 form.addEventListener('submit', (event) => {
                     event.preventDefault();
@@ -733,8 +794,7 @@
                 console.log('Personalization settings saved:', personalization);
                 showToast('Personalization saved!');
             });
-
-        });
+        }
     </script>
 </body>
 </html>
