@@ -44,26 +44,23 @@ else:
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token =  None
+        token = None
         if 'Authorization' in request.headers:
             token = request.headers['Authorization'].split(" ")[1]
-            if not token:
-                return jsonify({'message': 'Token missing!'}), 401
-            try:
-                # Validate token with Supabase 
-                user = supabase_client.auth.get_user(token).user
-                if not user:
-                    raise Exception("Invalid user")
-            except Exception as e:
-                return jsonify({'message': 'Token is invaliud or expired!'}), 401
-            return f(*args, **kwargs)
-        return decorated
+        if not token:
+            return jsonify({'message': 'Token missing!'}), 401
+        try:
+            supabase_client.auth.get_user(token)
+        except:
+            return jsonify({'message': 'Token is invalid or expired!'}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 
 @app.route("/")
 def index():
-    return "SmartRepAI Backend is running!"
-    
+    return "SmartRepAI Backend is running!"  
+ 
 @app.route("/api/chat", methods=["POST"])
 @token_required
 def chat_handler():
