@@ -273,15 +273,25 @@
     <div id="knowledge-base-page" class="page max-w-md mx-auto p-4 min-h-screen flex-col">
         <header class="grid grid-cols-3 items-center py-4 w-full">
             <div class="justify-self-start">
-                 <a href="#" data-target="home-page" class="nav-link p-2">
+                <a href="#" data-target="home-page" class="nav-link p-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-primary)"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                 </a>
+                </a>
             </div>
             <h1 class="text-xl font-bold justify-self-center whitespace-nowrap">Knowledge Base</h1>
             <div></div>
         </header>
+
+        <div class="card mb-4">
+            <h3 class="font-semibold text-center mb-2">Add to Knowledge Base</h3>
+                <form id="upload-knowledge-form" class="flex items-center gap-2">
+                    <input type="file" id="knowledge-file-input" class="text-sm" accept=".pdf" required>
+                    <button type="submit" class="py-1 px-4 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-opacity">Upload</button>
+                </form>
+        </div>
+
         <main id="kb-chat-history" class="flex-grow w-full space-y-4 flex flex-col overflow-y-auto pb-4">
             </main>
+
         <footer class="py-4 w-full">
             <form id="kb-chat-form" class="flex items-center space-x-2">
                 <input type="text" id="kb-chat-input" class="text-input flex-grow" placeholder="Ask a question...">
@@ -521,6 +531,47 @@
         } else {
             userInfo.classList.add('hidden');
             loginForm.classList.remove('hidden');
+        }
+    });
+
+    // --- Handle Knowledge Upload ---
+    const uploadForm = document.getElementById('upload-knowledge-form');
+    uploadForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const fileInput = document.getElementById('knowledge-file-input');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("Please select a file to upload.");
+            return;
+        }
+
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+            alert("You must be logged in to upload files.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/upload-knowledge', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "File upload failed.");
+            }
+            alert(result.message); // Or use your showToast function
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            fileInput.value = '';
         }
     });
 

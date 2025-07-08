@@ -5,6 +5,10 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from functools import wraps 
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader
+import tempfile
 
 
 
@@ -60,6 +64,49 @@ def token_required(f):
 @app.route("/")
 def index():
     return "SmartRepAI Backend is running!"  
+
+@app.route("/api/upload-knowledge", methods=["POST"])
+@token_required
+def upload_knowledge():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        # Get user from token to associate data with them
+        token = request.headers['Authorization'].split(" ")[1]
+        user = supabase_client.auth.get_user(token).user
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            file.save(tmp.name)
+            loader = PyPDFLoader(tmp.name)
+            documents = loader.load()
+
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        chunks = text_splitter.split_documents(documents)
+        
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
+        
+        records_to_insert = []
+        for chunk in chunks:
+            vector = embeddings.embed_query(chunk.page_content)
+            records_to_insert.append({
+                "user_id": user.id,
+                "content": chunk.page_content,
+                "embedding": vector
+            })
+
+        supabase_client.table("documents").insert(records_to_insert).execute()
+        
+        return jsonify({"message": f"Successfully added knowledge from {file.filename}"}), 200
+
+    except Exception as e:
+        print(f"Error in file upload: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        os.remove(tmp.name)
  
 @app.route("/api/chat", methods=["POST"])
 @token_required
@@ -68,15 +115,43 @@ def chat_handler():
         return jsonify({"error": "Gemini model is not configured. Check backend logs."}), 500
 
     data = request.get_json()
-    # The frontend will send the entire chat history in a 'history' key
     if not data or "history" not in data:
         return jsonify({"error": "Invalid request: 'history' not found"}), 400
 
-    # The history from the frontend is the full conversation
     history = data["history"]
+    last_message = history[-1]['parts'][0]['text']
 
     try:
-        # Using the simpler, stateless generate_content method which is more robust 
+        token = request.headers['Authorization'].split(" ")[1]
+        user = supabase_client.auth.get_user(token).user
+
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
+        query_embedding = embeddings.embed_query(last_message)
+
+        matches = supabase_client.rpc('match_documents', {
+            'query_embedding': query_embedding,
+            'match_count': 3,
+            'requesting_user_id': user.id
+        }).execute()
+
+        context_text = ""
+        if matches.data:
+            context_text = "\n\n".join([item['content'] for item in matches.data])
+        
+        prompt_with_context = f"""
+        Based on the following context, please answer the user's question. 
+        If the context does not contain the answer, say you don't have information on that topic.
+
+        Context:
+        ---
+        {context_text}
+        ---
+
+        User's Question: {last_message}
+        """
+        
+        history[-1]['parts'][0]['text'] = prompt_with_context
+
         response = model.generate_content(history)
         return jsonify({"text": response.text})
 
