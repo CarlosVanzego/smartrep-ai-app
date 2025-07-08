@@ -490,151 +490,131 @@
         </div>
 
     <script>
-        // --- Supabase Client Initialization & Auth Logic ---
-        const supaUrl = 'https://sckbcgxrebtmxozplmke.supabase.co'; // ❗ PASTE YOUR URL HERE
-        const supaAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNja2JjZ3hyZWJ0bXhvenBsbWtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMDIwNjcsImV4cCI6MjA2Njc3ODA2N30.rCsHHG832qIKbrxxEvkIGVxCLpXJsd-NbCKvXgR_sxs';  // ❗ PASTE YOUR ANON KEY HERE
-        const supabaseClient = supabase.createClient(supaUrl, supaAnonKey);
+        // --- Supabase Client Initialization & Auth Logic (MUST BE FIRST) ---
+    const supaUrl = 'https://sckbcgxrebtmxozplmke.supabase.co';
+    const supaAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNja2JjZ3hyZWJ0bXhvenBsbWtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMDIwNjcsImV4cCI6MjA2Njc3ODA2N30.rCsHHG832qIKbrxxEvkIGVxCLpXJsd-NbCKvXgR_sxs';
+    const supabaseClient = supabase.createClient(supaUrl, supaAnonKey);
 
-        const loginForm = document.getElementById('login-form');
-        const logoutButton = document.getElementById('logout-button');
-        const userInfo = document.getElementById('user-info');
-        const userEmailDisplay = document.getElementById('user-email-display');
-            
-        // Handle Login/Sign Up Form
-        loginForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const email = document.getElementById('email-input').value;
-            const password = document.getElementById('password-input').value;
+    const loginForm = document.getElementById('login-form');
+    const logoutButton = document.getElementById('logout-button');
+    const userInfo = document.getElementById('user-info');
+    const userEmailDisplay = document.getElementById('user-email-display');
+        
+    loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const email = document.getElementById('email-input').value;
+        const password = document.getElementById('password-input').value;
+        const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (signInError) {
+            const { error: signUpError } = await supabaseClient.auth.signUp({ email, password });
+            if (signUpError) alert(signUpError.message);
+        }
+    });
 
-            // Try to sign in first
-            const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
+    logoutButton.addEventListener('click', () => supabaseClient.auth.signOut());
 
-            
-            if (signInError) {
-                // If sign in fails, it might be because the user doesn't exist yet, so we try to sign them up
-                const { error: signUpError } = await supabaseClient.auth.signUp({ email, password });
-                if (signUpError) {
-                    alert(signUpError.message);
-                } 
-            }
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+        if (session && session.user) {
+            userInfo.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            userEmailDisplay.textContent = session.user.email;
+        } else {
+            userInfo.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+        }
+    });
+
+    // --- Original Application Logic (Wrapped in DOMContentLoaded) ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const pages = document.querySelectorAll('.page');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const successToast = document.getElementById('success-toast');
+
+        const showPage = (pageId) => {
+            pages.forEach(page => {
+                page.classList.toggle('active', page.id === pageId);
+            });
+            window.scrollTo(0, 0);
+        };
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (event) => {
+                event.preventDefault();
+                const targetPageId = link.dataset.target;
+                if (targetPageId) {
+                    showPage(targetPageId);
+                    if (targetPageId === 'knowledge-base-page' && !kbChatInitialized) {
+                        initKnowledgeBaseChat();
+                    }
+                    if (targetPageId === 'coaching-tips-page') {
+                        populateCoachingTips();
+                    }
+                    if (targetPageId === 'verbalization-page' && !verbalizationChatInitialized) {
+                        initVerbalizationChat();
+                    }
+                }
+            });
         });
 
-        // Handle Logout
-        logoutButton.addEventListener('click', async () => {
-            await supabaseClient.auth.signOut();
-        });
+        const setupChat = (formId, inputId, historyContainerId, sendButtonId, _placeholder, chatHistoryRef) => {
+            const form = document.getElementById(formId);
+            const input = document.getElementById(inputId);
+            const historyContainer = document.getElementById(historyContainerId);
+            const sendButton = document.getElementById(sendButtonId);
 
-        // Listen for changes in authentication state (login/logout)
-        supabaseClient.auth.onAuthStateChange((_event, session) => {
-            if (session && session.user) {
-                // User logged in
-                userInfo.classList.remove('hidden');
-                loginForm.classList.add('hidden');
-                userEmailDisplay.textContent = session.user.email;
-            } else {
-                // User is logged out
-                userInfo.classList.add('hidden');
-                loginForm.classList.remove('hidden');
-                userEmailDisplay.textContent = '';
-            }
-        });
+            const sendMessage = async (prompt) => {
+                const sendButtonIcon = sendButton.innerHTML;
+                sendButton.innerHTML = `<div class="w-6 h-6 border-t-2 border-white border-solid rounded-full animate-spin"></div>`;
+                sendButton.disabled = true;
+                input.disabled = true;
 
-        // --- Original Application Logic (Wrapped in DOMContentLoaded) ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const pages = document.querySelectorAll('.page');
-            const navLinks = document.querySelectorAll('.nav-link');
-            const successToast = document.getElementById('success-toast');
-        });
+                if (chatHistoryRef.length === 0 || (chatHistoryRef.length > 0 && chatHistoryRef[chatHistoryRef.length - 1].role !== 'system')) {
+                    appendMessage(prompt, 'user', historyContainer);
+                }
+                chatHistoryRef.push({ role: "user", parts: [{ text: prompt }] });
+                
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (!session) {
+                        alert("You must be logged in to chat.");
+                        return;
+                    }
 
-            // --- Page Navigation ---
-            const showPage = (pageId) => {
-                pages.forEach(page => {
-                    page.classList.toggle('active', page.id === pageId);
-                });
-                window.scrollTo(0, 0);
+                    const apiUrl = "http://127.0.0.1:5000/api/chat";
+                    const payload = { history: chatHistoryRef };
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+                    }
+                    const result = await response.json();
+                    if (result.text) {
+                        const aiResponse = result.text;
+                        chatHistoryRef.push({ role: "model", parts: [{ text: aiResponse }] });
+                        appendMessage(aiResponse, 'ai', historyContainer);
+                    } else {
+                        appendMessage("I couldn't generate a response. Please try again.", 'ai', historyContainer);
+                    }
+                } catch (error) { 
+                    console.error("Error sending message:", error);
+                    appendMessage(`Error: ${error.message}. Please try again.`, 'ai', historyContainer);
+                } finally {
+                    sendButton.innerHTML = sendButtonIcon;
+                    sendButton.disabled = false;
+                    input.disabled = false;
+                    input.focus();
+                }
             };
 
-            navLinks.forEach(link => {
-                link.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    const targetPageId = link.dataset.target;
-                    if (targetPageId) {
-                        showPage(targetPageId);
-
-                        if(targetPageId === 'knowledge-base-page' && !kbChatInitialized) {
-                            initKnowledgeBaseChat();
-                        }
-                        if(targetPageId === 'coaching-tips-page') {
-                            populateCoachingTips();
-                        }
-                         if(targetPageId === 'verbalization-page' && !verbalizationChatInitialized) {
-                            initVerbalizationChat();
-                        }
-                    }
-                });
-            });
-
-            // --- Generic AI Chat Function ---
-            const setupChat = (formId, inputId, historyContainerId, sendButtonId, _placeholder, chatHistoryRef) => {
-                const form = document.getElementById(formId);
-                const input = document.getElementById(inputId);
-                const historyContainer = document.getElementById(historyContainerId);
-                const sendButton = document.getElementById(sendButtonId);
-
-                const sendMessage = async (prompt) => {
-                    const sendButtonIcon = sendButton.innerHTML;
-                    sendButton.innerHTML = `<div class="w-6 h-6 border-t-2 border-white border-solid rounded-full animate-spin"></div>`;
-                    sendButton.disabled = true;
-                    input.disabled = true;
-
-                    if (chatHistoryRef.length === 0 || (chatHistoryRef.length > 0 && chatHistoryRef[chatHistoryRef.length - 1].role !== 'system')) {
-                        appendMessage(prompt, 'user', historyContainer);
-                    }
-                    chatHistoryRef.push({ role: "user", parts: [{ text: prompt }] });
-                    
-                    try {
-                        const { data: { session } } = await supabaseClient.auth.getSession();
-
-                        if (!session) {
-                            alert("You must be logged in to chat.");
-                            return;
-                        }
-
-                        const apiUrl = "http://127.0.0.1:5000/api/chat";
-                        const payload = { history: chatHistoryRef };
-
-                        const response = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${session.access_token}` // Add the users token
-                            },
-                            body: JSON.stringify(payload)
-                        });
-
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.error || `API request failed with status ${response.status}`);
-                        }
-
-                        const result = await response.json();
-                        if (result.text) {
-                            const aiResponse = result.text;
-                            chatHistoryRef.push({ role: "model", parts: [{ text: aiResponse }] });
-                            appendMessage(aiResponse, 'ai', historyContainer);
-                        } else {
-                            appendMessage("I couldn't generate a response. Please try again.", 'ai', historyContainer);
-                        }
-                    } catch (error) { 
-                        console.error("Error sending message.", error);
-                        appendMessage(`Error: ${error.message}. Please try again.`, 'ai', historyContainer);
-                    } finally {
-                        sendButton.innerHTML = sendButtonIcon;
-                        sendButton.disabled = false;
-                        input.disabled = false;
-                        input.focus();
-                    }
-
+            if (form) {
                 form.addEventListener('submit', (event) => {
                     event.preventDefault();
                     const userMessage = input.value.trim();
@@ -643,27 +623,25 @@
                         input.value = '';
                     }
                 });
-            };
+            }
+        };
 
-            const appendMessage = (text, role, container) => {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `chat-bubble ${role === 'user' ? 'user-bubble' : 'ai-bubble'}`;
-                messageDiv.textContent = text;
-                container.appendChild(messageDiv);
-                container.scrollTop = container.scrollHeight;
-            };
+        const appendMessage = (text, role, container) => {
+            if (!container) return;
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-bubble ${role === 'user' ? 'user-bubble' : 'ai-bubble'}`;
+            messageDiv.textContent = text;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        };
 
-            // --- Setup Chat Instances ---
-            let kbChatHistory = [];
-            let kbChatInitialized = false;
-            let verbalizationChatHistory = [];
-            let verbalizationChatInitialized = false;
+        let kbChatHistory = [];
+        let kbChatInitialized = false;
+        let verbalizationChatHistory = [];
+        let verbalizationChatInitialized = false;
 
-            setupChat(
-                'kb-chat-form', 'kb-chat-input', 'kb-chat-history', 'kb-send-button', null, kbChatHistory);
-            
-            setupChat(
-                'verbalization-chat-form', 'verbalization-chat-input', 'verbalization-chat-history', 'verbalization-send-button', null, verbalizationChatHistory);
+        setupChat('kb-chat-form', 'kb-chat-input', 'kb-chat-history', 'kb-send-button', null, kbChatHistory);
+        setupChat('verbalization-chat-form', 'verbalization-chat-input', 'verbalization-chat-history', 'verbalization-send-button', null, verbalizationChatHistory);
 
             const initKnowledgeBaseChat = () => {
                 const systemPrompt = "You’re a medical educator helping me (a pharmaceutical sales rep) understand complex topics in a simple, professional way. I may ask about disease states, drug interactions, safety info, or biologic processes. Break it down clearly, use simple language, and help me sound smart and confident when I explain it to a doctor. Include professional phrases I can use in conversation. Use bullet points when helpful. Keep your answers concise and limit them to 2-3 paragraphs.";
@@ -791,7 +769,7 @@
                 console.log('Personalization settings saved:', personalization);
                 showToast('Personalization saved!');
             });
-        }
+        });
     </script>
 </body>
 </html>
