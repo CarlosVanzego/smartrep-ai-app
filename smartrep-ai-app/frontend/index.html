@@ -490,61 +490,61 @@
         </div>
 
     <script>
-        // --- Supabase Client Initialization ---
-        const supaURL = 'https://sckbcgxrebtmxozplmke.supabase.co';// Project URL
-        const supaAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNja2JjZ3hyZWJ0bXhvenBsbWtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMDIwNjcsImV4cCI6MjA2Njc3ODA2N30.rCsHHG832qIKbrxxEvkIGVxCLpXJsd-NbCKvXgR_sxs';
-        const supabase = supabase.createClient(supaURL, supaAnonKey);
+        // --- Supabase Client Initialization & Auth Logic ---
+        const supaUrl = 'https://sckbcgxrebtmxozplmke.supabase.co'; // ❗ PASTE YOUR URL HERE
+        const supaAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNja2JjZ3hyZWJ0bXhvenBsbWtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMDIwNjcsImV4cCI6MjA2Njc3ODA2N30.rCsHHG832qIKbrxxEvkIGVxCLpXJsd-NbCKvXgR_sxs';  // ❗ PASTE YOUR ANON KEY HERE
+        const supabaseClient = supabase.createClient(supaUrl, supaAnonKey);
 
+        const loginForm = document.getElementById('login-form');
+        const logoutButton = document.getElementById('logout-button');
+        const userInfo = document.getElementById('user-info');
+        const userEmailDisplay = document.getElementById('user-email-display');
+            
+        // Handle Login/Sign Up Form
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+
+            // Try to sign in first
+            const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+            
+            if (signInError) {
+                // If sign in fails, it might be because the user doesn't exist yet, so we try to sign them up
+                const { error: signUpError } = await supabaseClient.auth.signUp({ email, password });
+                if (signUpError) {
+                    alert(signUpError.message);
+                } 
+            }
+        });
+
+        // Handle Logout
+        logoutButton.addEventListener('click', async () => {
+            await supabaseClient.auth.signOut();
+        });
+
+        // Listen for changes in authentication state (login/logout)
+        supabaseClient.auth.onAuthStateChange((_event, session) => {
+            if (session && session.user) {
+                // User logged in
+                userInfo.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+                userEmailDisplay.textContent = session.user.email;
+            } else {
+                // User is logged out
+                userInfo.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+                userEmailDisplay.textContent = '';
+            }
+        });
+
+        // --- Original Application Logic (Wrapped in DOMContentLoaded) ---
         document.addEventListener('DOMContentLoaded', () => {
             const pages = document.querySelectorAll('.page');
             const navLinks = document.querySelectorAll('.nav-link');
             const successToast = document.getElementById('success-toast');
-
-            // Supabase Auth Logic --- (Sign up, Log in, Log out, updates)
-            const loginFOrm = document.getElementById('login-form');
-            const logoutButton = document.getElementById('logout-button');
-            const userInfo = document.getElementByUd('user-info');
-            const userEmailDisplay = document.getElementById('user-email-display')});
-            
-            // Handle Login/Sign Up Form
-            loginForm.addEventListner('usbmit', async (event) => {
-                event.preventDefault();
-                const email = document.getElementById('email-input'.value);
-                const password = document.getElementById('password-input').value;
-
-                // Try to sign in first
-                const { error: signInEffort} = await supabase.auth.signInWithPassword({ email, password});
-
-                if (signInError) {
-                    // If sign in fails, it might be because the user doesn't exist yet, so we try to sign them up)
-                    const { error: signUpError } = await supabase.auth.signUp({ email, password });
-                    if (signUpError) {
-                        alert(signUpError.message);
-                    } else {
-                        alert('Signed up successfully!');
-                    }
-                }
-            }),
-
-            // Handle Logout
-            logoutButton.addEventListner('click', async () => {
-                await supabase.auth.signOut();
-            });
-
-            // Listen for changes in authentication state (login/logout)
-            supabase.auth.onAuthStateChange((_event, session) => {
-                if (session && session.user) {
-                    // User logged in
-                    userInfo.classList.remove('hidden');
-                    loginForm.classList.add('hidden');
-                    userEmailDisplay.textContent = session.user.email;
-                } else {
-                    // User is logged out
-                    userInfo.classList.add('hidden');
-                    loginForm.classList.remove('hidden');
-                    userEmailDisplay.textContent = '';
-                }
-             });
+        });
 
             // --- Page Navigation ---
             const showPage = (pageId) => {
@@ -593,7 +593,7 @@
                     chatHistoryRef.push({ role: "user", parts: [{ text: prompt }] });
                     
                     try {
-                        const { data: { session } } = await supabase.auth.getSession();
+                        const { data: { session } } = await supabaseClient.auth.getSession();
 
                         if (!session) {
                             alert("You must be logged in to chat.");
@@ -660,16 +660,10 @@
             let verbalizationChatInitialized = false;
 
             setupChat(
-                'kb-chat-form', 'kb-chat-input', 'kb-chat-history', 'kb-send-button',
-                null,
-                kbChatHistory
-            );
+                'kb-chat-form', 'kb-chat-input', 'kb-chat-history', 'kb-send-button', null, kbChatHistory);
             
             setupChat(
-                'verbalization-chat-form', 'verbalization-chat-input', 'verbalization-chat-history', 'verbalization-send-button',
-                null, 
-                verbalizationChatHistory
-            );
+                'verbalization-chat-form', 'verbalization-chat-input', 'verbalization-chat-history', 'verbalization-send-button', null, verbalizationChatHistory);
 
             const initKnowledgeBaseChat = () => {
                 const systemPrompt = "You’re a medical educator helping me (a pharmaceutical sales rep) understand complex topics in a simple, professional way. I may ask about disease states, drug interactions, safety info, or biologic processes. Break it down clearly, use simple language, and help me sound smart and confident when I explain it to a doctor. Include professional phrases I can use in conversation. Use bullet points when helpful. Keep your answers concise and limit them to 2-3 paragraphs.";
@@ -760,14 +754,16 @@
             
             // --- Settings Page Logic ---
             const themeToggleButton = document.getElementById('theme-toggle-button');
-            themeToggleButton.addEventListener('click', () => {
-                const currentTheme = document.body.getAttribute('data-theme');
-                if (currentTheme === 'light') {
-                    document.body.setAttribute('data-theme', 'dark');
-                } else {
-                    document.body.setAttribute('data-theme', 'light');
-                }
-            });
+            if (themeToggleButton) {
+                themeToggleButton.addEventListener('click', () => {
+                    const currentTheme = document.body.getAttribute('data-theme');
+                    if (currentTheme === 'light') {
+                        document.body.setAttribute('data-theme', 'dark');
+                    } else {
+                        document.body.setAttribute('data-theme', 'light');
+                    }
+                });
+            }
             
             const setupSuggestionButtons = () => {
                 const suggestionButtons = document.querySelectorAll('.suggestion-btn');
@@ -784,7 +780,7 @@
             setupSuggestionButtons();
 
             const savePersonalizationButton = document.getElementById('save-personalization');
-            savePersonalizationButton.addEventListener('click', () => {
+            savePersonalizationButton?.addEventListener('click', () => {
                 const personalization = {
                     personality: document.getElementById('ai-personality').value,
                     delivery: document.getElementById('info-delivery').value,
