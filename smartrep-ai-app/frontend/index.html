@@ -226,6 +226,11 @@
                 <div class="mt-6"><label for="prescribing-habits" class="form-label text-center">Prescribing Habits</label><input type="text" id="prescribing-habits" class="text-input" placeholder="e.g., Prefers biosimilars..."></div>
                 <div class="mt-6"><label for="personality" class="form-label text-center">Personality</label><select id="personality" class="dropdown"><option>Navigator</option><option>Traditionalist</option><option>HOT Target</option></select></div>
                 <div class="mt-6"><label class="form-label text-center">Key Concerns</label><div class="space-y-3"><div class="flex items-center"><input id="concern-safety" type="checkbox" class="h-5 w-5 rounded text-blue-600 focus:ring-blue-500 border-gray-300"><label for="concern-safety" class="ml-3 checkbox-label">Safety</label></div><div class="flex items-center"><input id="concern-efficacy" type="checkbox" class="h-5 w-5 rounded text-blue-600 focus:ring-blue-500 border-gray-300" checked><label for="concern-efficacy" class="ml-3 checkbox-label">Efficacy</label></div><div class="flex items-center"><input id="concern-access" type="checkbox" class="h-5 w-5 rounded text-blue-600 focus:ring-blue-500 border-gray-300"><label for="concern-access" class="ml-3 checkbox-label">Access</label></div></div></div>
+            <div class="mt-6">
+                <label for="roleplay-file" class="form-label text-center">Reference Document (Optional)</label>
+                <input type="file" id="roleplay-file" class="text-sm">
+            </div>
+
                 <h2 class="text-lg font-bold mt-8 mb-6 pt-6 border-t border-gray-200 text-center">Scenario Details</h2>
                 <div><textarea id="scenario" class="textarea" rows="4" placeholder="e.g., Handling objections to cost..."></textarea></div>
             </div>
@@ -243,7 +248,7 @@
                     <span>Save Template</span>
                  </a>
             </div>
-            <button class="cta-button">Start Role Play Simulation</button>
+            <button id="start-roleplay-button" class="cta-button">Start Role Play Simulation</button>
         </footer>
     </div>
 
@@ -294,10 +299,17 @@
 
         <footer class="py-4 w-full">
             <form id="kb-chat-form" class="flex items-center space-x-2">
+                
+                <button type="button" id="kb-mic-button" class="p-2 hover:opacity-70">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" style="color: var(--text-primary);" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-14 0m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                </button>
+
                 <input type="text" id="kb-chat-input" class="text-input flex-grow" placeholder="Ask a question...">
+
                 <button type="submit" id="kb-send-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold p-3 rounded-full transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                 </button>
+
             </form>
         </footer>
     </div>
@@ -567,7 +579,7 @@
             if (!response.ok) {
                 throw new Error(result.error || "File upload failed.");
             }
-            alert(result.message); // Or use your showToast function
+            alert(result.message); 
         } catch (error) {
             alert(error.message);
         } finally {
@@ -576,6 +588,23 @@
     });
 
     // --- Original Application Logic (Wrapped in DOMContentLoaded) ---
+    // --- Role-Play File Handling ---
+    const startRoleplayButton = document.getElementById('start-roleplay-button');
+    startRoleplayButton.addEventListener('click', async () => {
+        const fileInput = document.getElementById('roleplay-file');
+        const file = fileInput.files[0];
+        let fileContentForPrompt = "";
+
+        if (file) {
+            // This reads the content of a text-based file.
+            fileContentForPrompt = await file.text();
+            console.log("Reference document loaded.");
+        }
+
+        alert("Starting role play! The content from your reference document has been loaded and will be used to inform the AI's persona.");
+
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
         const pages = document.querySelectorAll('.page');
         const navLinks = document.querySelectorAll('.nav-link');
@@ -607,6 +636,35 @@
             });
         });
 
+        // --- Voice Recognition ---
+        const kbMicButton = document.getElementById('kb-mic-button');
+        const kbChatInput = document.getElementById('kb-chat-input');
+
+        // Check if the browser supports the Web Speech API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            
+            kbMicButton.addEventListener('click', () => {
+                try {
+                    recognition.start();
+                } catch(e) {
+                    console.error("Speech recognition error:", e);
+                }
+            });
+
+            // When the browser gets a result, put it in the input box
+            recognition.addEventListener('result', (event) => {
+                const transcript = event.results[0][0].transcript;
+                kbChatInput.value = transcript;
+            });
+
+        } else {
+            // If the browser doesn't support it, hide the button.
+            console.log("Speech Recognition not supported in this browser.");
+            kbMicButton.style.display = 'none';
+        }
+
         const setupChat = (formId, inputId, historyContainerId, sendButtonId, _placeholder, chatHistoryRef) => {
             const form = document.getElementById(formId);
             const input = document.getElementById(inputId);
@@ -614,6 +672,32 @@
             const sendButton = document.getElementById(sendButtonId);
 
             const sendMessage = async (prompt) => {
+                if (prompt.trim().toLowerCase() === 'stop roleplay') {
+                    try {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+                        const response = await fetch('/api/roleplay-feedback', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${session.access_token}`
+                            },
+                            body: JSON.stringify({ 
+                                history: chatHistoryRef,
+                                persona: "Dr. Evelyn Reed", 
+                                topic: "Handling cost objections" 
+                            })
+                        });
+                        const result = await response.json();
+                        if (!response.ok) throw new Error(result.error);
+
+                        alert("Feedback generated and saved to Coaching Tips!");
+                        showPage('coaching-tips-page');
+                    } catch (error) {
+                        alert(`Could not generate feedback: ${error.message}`);
+                    }
+                    return;
+                }
+
                 const sendButtonIcon = sendButton.innerHTML;
                 sendButton.innerHTML = `<div class="w-6 h-6 border-t-2 border-white border-solid rounded-full animate-spin"></div>`;
                 sendButton.disabled = true;

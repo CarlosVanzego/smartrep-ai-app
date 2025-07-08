@@ -158,6 +158,51 @@ def chat_handler():
     except Exception as e:
         print(f"Error during Gemini API call: {e}")
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/api/roleplay-feedback", methods=["POST"])
+@token_required
+def roleplay_feedback():
+    data = request.get_json()
+    if not data or "history" not in data:
+        return jsonify({"error": "Invalid request: 'history' not found"}), 400
+
+    try:
+        token = request.headers['Authorization'].split(" ")[1]
+        user = supabase_client.auth.get_user(token).user
+
+        # The full conversation history from the frontend
+        conversation_history = data["history"]
+        
+        # The "meta-prompt" to make the AI act as a coach
+        feedback_prompt = f"""
+        You are a pharmaceutical sales coach. The following is a transcript of a role-play conversation
+        between a sales rep and an AI pretending to be a doctor. Please analyze the rep's performance.
+        Provide specific, actionable feedback covering their opening, questioning skills, objection handling, and closing.
+        Format the feedback with bullet points.
+
+        CONVERSATION:
+        {conversation_history}
+        """
+
+        # Ask the AI for the feedback
+        feedback_response = model.generate_content(feedback_prompt)
+        feedback_text = feedback_response.text
+
+        # Save the feedback to the database
+        session_data = {
+            "user_id": user.id,
+            "persona": data.get("persona", "Unknown"),
+            "topic": data.get("topic", "General"),
+            "feedback": feedback_text
+        }
+        supabase_client.table("coaching_sessions").insert(session_data).execute()
+        
+        # Return the generated feedback to the frontend
+        return jsonify({"feedback": feedback_text})
+
+    except Exception as e:
+        print(f"Error during feedback generation: {e}")
+        return jsonify({"error": str(e)}), 5000
 
 # This is the block that starts the Flask server
 if __name__ == "__main__":
