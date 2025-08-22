@@ -79,29 +79,19 @@ The application will open in your browser, and you can now sign up, log in, and 
 
 # Technologies Used
 Backend:
-
-Python 3.13
-
-Flask (for the web server and API)
-
-google-generativeai (for the Gemini API)
-
-supabase (for user authentication and database operations)
-
-langchain, pypdf (for the RAG pipeline)
+- Python 3.13
+- Flask (for the web server and API)
+- Google-generativeai (for the Gemini API)
+- Supabase (for user authentication and database operations)
+- Langchain, pypdf (for the RAG pipeline)
 
 Frontend:
-
-HTML5
-
-Tailwind CSS
-
-Vanilla JavaScript
+- HTML5
+- Tailwind CSS
+- Vanilla JavaScript
 
 Database & Auth:
-
-Supabase (PostgreSQL with pgvector extension)
+- Supabase (PostgreSQL with pgvector extension)
 
 # Deployment:
-
-Vercel
+- Vercel
