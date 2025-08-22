@@ -39,10 +39,11 @@ source venv/bin/activate
 # venv\Scripts\activate
 Install Python dependencies:
 
-Bash
+```Bash
 
 pip install -r requirements.txt
-Create your environment file: In the backend folder, create a file named .env and add your secret keys. Remember to enclose the keys in quotes.
+```
+- Create your environment file: In the backend folder, create a file named .env and add your secret keys. Remember to enclose the keys in quotes.
 
 Code snippet
 
@@ -50,10 +51,12 @@ GEMINI_API_KEY="your-google-ai-api-key"
 SUPABASE_SERVICE_KEY="your-supabase-service-role-key"
 Run the backend server:
 
-Bash
+```Bash
 
 python3 app.py
-The backend will now be running on http://127.0.0.1:5000. Leave this terminal running.
+```
+
+- The backend will now be running on http://127.0.0.1:5000. Leave this terminal running.
 
 3. Set Up and Run the Frontend
 Open a new terminal window.
@@ -99,6 +102,6 @@ Database & Auth:
 
 Supabase (PostgreSQL with pgvector extension)
 
-Deployment:
+# Deployment:
 
 Vercel
