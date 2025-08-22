@@ -11,22 +11,25 @@ SmartRepAI is a full-stack web application designed to be an indispensable train
 - Dynamic Frontend: A responsive, single-page application interface built with HTML, Tailwind CSS, and vanilla JavaScript.
 
 # How to Run the App
-This project is split into a Python backend and a vanilla JavaScript frontend. You will need two terminal windows to run them concurrently.
+- This project is split into a Python backend and a vanilla JavaScript frontend. You will need two terminal windows to run them concurrently.
 
 1. Clone the Repository
-Bash
+```Bash
 
 git clone [Your Repository URL Here]
 cd smartrep-ai-app
-2. Set Up the Backend
-Navigate to the backend directory:
+```
 
-Bash
+2. Set Up the Backend
+- Navigate to the backend directory:
+
+```Bash
 
 cd backend
-Create and activate a virtual environment:
+```
+- Create and activate a virtual environment:
 
-Bash
+```Bash
 
 # Create the environment
 python3 -m venv venv
