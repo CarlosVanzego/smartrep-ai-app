@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from functools import wraps 
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders.pdf import PyPDFLoader
 import tempfile
 
