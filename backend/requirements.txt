@@ -7,3 +7,5 @@ supabase
 langchain-core
 langchain-google-genai
 pypdf
+langchain-community
+langchain
