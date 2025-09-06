@@ -4,8 +4,6 @@ google-generativeai
 Flask-Cors
 gunicorn
 supabase
-# We are now using the smaller, specific langchain packages
 langchain-core
 langchain-google-genai
 pypdf
-langchain-community
