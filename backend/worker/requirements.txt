@@ -1,7 +1,5 @@
 flask
+python-dotenv
 gunicorn
 supabase
-google-generativeai
-langchain-core
-langchain-google-genai
-pypdf
+requests
