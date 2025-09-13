@@ -567,7 +567,7 @@
         formData.append('file', file);
 
         try {
-            const response = await fetch('http://127.0.0.1:5001/api/upload-knowledge', {
+            const response = await fetch('/api/upload-knowledge', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`
@@ -715,7 +715,7 @@
                         return;
                     }
 
-                    const apiUrl = "http://127.0.0.1:5001/api/chat";
+                    const apiUrl = "/api/chat";
                     const payload = { history: chatHistoryRef };
                     const response = await fetch(apiUrl, {
                         method: 'POST',
